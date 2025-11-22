@@ -3,6 +3,7 @@ from models import BaseVAE
 from torch import nn
 from torch.nn import functional as F
 from .types_ import *
+from typing import List
 
 
 class ConditionalVAE(BaseVAE):
@@ -14,12 +15,13 @@ class ConditionalVAE(BaseVAE):
                  hidden_dims: List = None,
                  img_size:int = 64,
                  **kwargs) -> None:
-        super(ConditionalVAE, self).__init__()
+        super(ConditionalVAE, self).__init__(**kwargs)
 
         self.latent_dim = latent_dim
         self.img_size = img_size
+        self.num_classes = num_classes # Store num_classes
 
-        self.embed_class = nn.Linear(num_classes, img_size * img_size)
+        self.embed_class = nn.Linear(self.num_classes, img_size * img_size)
         self.embed_data = nn.Conv2d(in_channels, in_channels, kernel_size=1)
 
         modules = []
@@ -46,7 +48,7 @@ class ConditionalVAE(BaseVAE):
         # Build Decoder
         modules = []
 
-        self.decoder_input = nn.Linear(latent_dim + num_classes, hidden_dims[-1] * 4)
+        self.decoder_input = nn.Linear(latent_dim + self.num_classes, hidden_dims[-1] * 4) # Use self.num_classes
 
         hidden_dims.reverse()
 
@@ -117,7 +119,9 @@ class ConditionalVAE(BaseVAE):
         return eps * std + mu
 
     def forward(self, input: Tensor, **kwargs) -> List[Tensor]:
-        y = kwargs['labels'].float()
+        labels = kwargs['labels'].long() # Ensure labels are long for one_hot
+        y = F.one_hot(labels, num_classes=self.num_classes).float() # One-hot encode labels
+        
         embedded_class = self.embed_class(y)
         embedded_class = embedded_class.view(-1, self.img_size, self.img_size).unsqueeze(1)
         embedded_input = self.embed_data(input)
@@ -127,7 +131,7 @@ class ConditionalVAE(BaseVAE):
 
         z = self.reparameterize(mu, log_var)
 
-        z = torch.cat([z, y], dim = 1)
+        z = torch.cat([z, y], dim = 1) # Concatenate one-hot encoded labels
         return  [self.decode(z), input, mu, log_var]
 
     def loss_function(self,
@@ -157,7 +161,8 @@ class ConditionalVAE(BaseVAE):
         :param current_device: (Int) Device to run the model
         :return: (Tensor)
         """
-        y = kwargs['labels'].float()
+        labels = kwargs['labels'].long() # Ensure labels are long for one_hot
+        y = F.one_hot(labels, num_classes=self.num_classes).float() # One-hot encode labels
         z = torch.randn(num_samples,
                         self.latent_dim)
 

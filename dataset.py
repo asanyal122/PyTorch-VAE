@@ -15,11 +15,11 @@ import zipfile
 class MyDataset(Dataset):
     def __init__(self):
         pass
-    
-    
+
+
     def __len__(self):
         pass
-    
+
     def __getitem__(self, idx):
         pass
 
@@ -27,46 +27,46 @@ class MyDataset(Dataset):
 class MyCelebA(CelebA):
     """
     A work-around to address issues with pytorch's celebA dataset class.
-    
+
     Download and Extract
     URL : https://drive.google.com/file/d/1m8-EBPgi5MRubrm6iQjafK2QMHDBMSfJ/view?usp=sharing
     """
-    
+
     def _check_integrity(self) -> bool:
         return True
-    
-    
+
+
 
 class OxfordPets(Dataset):
     """
     URL = https://www.robots.ox.ac.uk/~vgg/data/pets/
     """
-    def __init__(self, 
-                 data_path: str, 
+    def __init__(self,
+                 data_path: str,
                  split: str,
                  transform: Callable,
                 **kwargs):
-        self.data_dir = Path(data_path) / "OxfordPets"        
+        self.data_dir = Path(data_path) / "OxfordPets"
         self.transforms = transform
         imgs = sorted([f for f in self.data_dir.iterdir() if f.suffix == '.jpg'])
-        
+
         self.imgs = imgs[:int(len(imgs) * 0.75)] if split == "train" else imgs[int(len(imgs) * 0.75):]
-    
+
     def __len__(self):
         return len(self.imgs)
-    
+
     def __getitem__(self, idx):
         img = default_loader(self.imgs[idx])
-        
+
         if self.transforms is not None:
             img = self.transforms(img)
-        
-        return img, 0.0 # dummy datat to prevent breaking 
+
+        return img, 0.0 # dummy datat to prevent breaking
 
 class ChestXRayDataset(Dataset):
     """
     Custom Dataset class for Chest X-Ray images (Pneumonia/Normal).
-    Expects data_dir to contain 'train' and 'test' subdirectories, 
+    Expects data_dir to contain 'train' and 'test' subdirectories,
     each with 'NORMAL' and 'PNEUMONIA' subdirectories.
     """
     def __init__(self, data_dir: str, split: str, transform: Callable = None):
@@ -103,7 +103,7 @@ class ChestXRayDataset(Dataset):
 
 class VAEDataset(LightningDataModule):
     """
-    PyTorch Lightning data module 
+    PyTorch Lightning data module
 
     Args:
         data_dir: root directory of your dataset.
@@ -137,13 +137,13 @@ class VAEDataset(LightningDataModule):
 
     def setup(self, stage: Optional[str] = None) -> None:
 #       =========================  OxfordPets Dataset  =========================
-            
+
 #         train_transforms = transforms.Compose([transforms.RandomHorizontalFlip(),
 #                                               transforms.CenterCrop(self.patch_size),
 # #                                               transforms.Resize(self.patch_size),
 #                                               transforms.ToTensor(),
 #                                                 transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))])
-        
+
 #         val_transforms = transforms.Compose([transforms.RandomHorizontalFlip(),
 #                                             transforms.CenterCrop(self.patch_size),
 # #                                             transforms.Resize(self.patch_size),
@@ -155,32 +155,32 @@ class VAEDataset(LightningDataModule):
 #             split='train',
 #             transform=train_transforms,
 #         )
-        
+
 #         self.val_dataset = OxfordPets(
 #             self.data_dir,
 #             split='val',
 #             transform=val_transforms,
 #         )
-        
+
 #       =========================  CelebA Dataset  =========================
-    
+
         train_transforms = transforms.Compose([transforms.RandomHorizontalFlip(),
-                                              # Removed CenterCrop(148) and replaced with Resize
-                                              transforms.Resize(self.patch_size),
+                                              # Ensure all images are resized to the same dimensions
+                                              transforms.Resize((self.patch_size, self.patch_size)), # Changed here
                                               transforms.ToTensor(),])
-        
+
         val_transforms = transforms.Compose([transforms.RandomHorizontalFlip(),
-                                            # Removed CenterCrop(148) and replaced with Resize
-                                            transforms.Resize(self.patch_size),
+                                            # Ensure all images are resized to the same dimensions
+                                            transforms.Resize((self.patch_size, self.patch_size)), # Changed here
                                             transforms.ToTensor(),])
-        
+
         # Replaced MyCelebA with ChestXRayDataset
         self.train_dataset = ChestXRayDataset(
             self.data_dir,
             split='train',
             transform=train_transforms,
         )
-        
+
         # Replaced MyCelebA with ChestXRayDataset
         self.val_dataset = ChestXRayDataset(
             self.data_dir,
@@ -188,7 +188,7 @@ class VAEDataset(LightningDataModule):
             transform=val_transforms,
         )
 #       ===============================================================
-        
+
     def train_dataloader(self) -> DataLoader:
         return DataLoader(
             self.train_dataset,
@@ -206,7 +206,7 @@ class VAEDataset(LightningDataModule):
             shuffle=False,
             pin_memory=self.pin_memory,
         )
-    
+
     def test_dataloader(self) -> Union[DataLoader, List[DataLoader]]:
         return DataLoader(
             self.val_dataset,

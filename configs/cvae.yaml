@@ -1,11 +1,11 @@
 model_params:
   name: 'ConditionalVAE'
   in_channels: 3
-  num_classes: 40
+  num_classes: 2 # Updated to 2 for Chest X-Ray dataset (Normal, Pneumonia)
   latent_dim: 128
 
 data_params:
-  data_path: "Data/"
+  data_path: "Data/chest_xray/"
   train_batch_size: 64
   val_batch_size:  64
   patch_size: 64
@@ -20,9 +20,14 @@ exp_params:
   manual_seed: 1265
 
 trainer_params:
-  gpus: [1]
   max_epochs: 10
+  min_epochs: 1
+  num_sanity_val_steps: 2
+  gradient_clip_val: 0.5
 
 logging_params:
   save_dir: "logs/"
   name: "ConditionalVAE"
+  monitor_metric: "val_loss"
+  save_top_k: 2
+  mode: "min"
