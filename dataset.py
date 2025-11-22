@@ -63,6 +63,44 @@ class OxfordPets(Dataset):
         
         return img, 0.0 # dummy datat to prevent breaking 
 
+class ChestXRayDataset(Dataset):
+    """
+    Custom Dataset class for Chest X-Ray images (Pneumonia/Normal).
+    Expects data_dir to contain 'train' and 'test' subdirectories, 
+    each with 'NORMAL' and 'PNEUMONIA' subdirectories.
+    """
+    def __init__(self, data_dir: str, split: str, transform: Callable = None):
+        self.data_dir = Path(data_dir)
+        self.split_dir = self.data_dir / split
+        self.transform = transform
+        self.samples = []
+        self.class_to_idx = {'NORMAL': 0, 'PNEUMONIA': 1}
+
+        self._load_samples()
+
+    def _load_samples(self):
+        for class_name, class_label in self.class_to_idx.items():
+            class_path = self.split_dir / class_name
+            if not class_path.is_dir():
+                print(f"Warning: Directory not found: {class_path}")
+                continue
+            for img_file in class_path.iterdir():
+                if img_file.suffix.lower() in ('.png', '.jpg', '.jpeg'):
+                    self.samples.append((str(img_file), class_label))
+
+    def __len__(self):
+        return len(self.samples)
+
+    def __getitem__(self, idx):
+        image_path, label = self.samples[idx]
+        image = default_loader(image_path)
+
+        if self.transform:
+            image = self.transform(image)
+
+        return image, label
+
+
 class VAEDataset(LightningDataModule):
     """
     PyTorch Lightning data module 
@@ -127,28 +165,27 @@ class VAEDataset(LightningDataModule):
 #       =========================  CelebA Dataset  =========================
     
         train_transforms = transforms.Compose([transforms.RandomHorizontalFlip(),
-                                              transforms.CenterCrop(148),
+                                              # Removed CenterCrop(148) and replaced with Resize
                                               transforms.Resize(self.patch_size),
                                               transforms.ToTensor(),])
         
         val_transforms = transforms.Compose([transforms.RandomHorizontalFlip(),
-                                            transforms.CenterCrop(148),
+                                            # Removed CenterCrop(148) and replaced with Resize
                                             transforms.Resize(self.patch_size),
                                             transforms.ToTensor(),])
         
-        self.train_dataset = MyCelebA(
+        # Replaced MyCelebA with ChestXRayDataset
+        self.train_dataset = ChestXRayDataset(
             self.data_dir,
             split='train',
             transform=train_transforms,
-            download=False,
         )
         
-        # Replace CelebA with your dataset
-        self.val_dataset = MyCelebA(
+        # Replaced MyCelebA with ChestXRayDataset
+        self.val_dataset = ChestXRayDataset(
             self.data_dir,
             split='test',
             transform=val_transforms,
-            download=False,
         )
 #       ===============================================================
         
@@ -178,4 +215,3 @@ class VAEDataset(LightningDataModule):
             shuffle=True,
             pin_memory=self.pin_memory,
         )
-     
