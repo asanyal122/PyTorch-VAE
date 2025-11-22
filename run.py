@@ -12,7 +12,7 @@ from pytorch_lightning import seed_everything
 from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
 from dataset import VAEDataset
 #from pytorch_lightning.plugins import DDPPlugin
-from lightning.pytorch.strategies import DDPStrategy
+from pytorch_lightning.strategies import DDPStrategy
 
 
 parser = argparse.ArgumentParser(description='Generic runner for VAE models')
